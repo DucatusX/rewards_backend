@@ -4,12 +4,13 @@ from datetime import timedelta
 
 from tortoise import timezone
 from tortoise.transactions import atomic
+from web3 import Web3
 
 from src.consts import DECIMALS
 from src.redis_utils import RedisClient
 from src.rewards.models import Airdrop, AirdropStatus, Healthcheck, Peer, Rate, Reward
 from src.settings import config
-from src.utils import pubkey_to_address, request_active_enodes, valid_enode
+from src.utils import pubkey_to_address, request_active_enodes, get_xgen_nodes, get_redis_xgen_nodes, valid_enode
 
 logger = logging.getLogger("src.rewards.tasks")
 
@@ -24,8 +25,9 @@ async def ping_nodes() -> None:
     RedisClient().set("online_peers", json.dumps(list(active_enodes)), 5 * 60)
 
     logger.debug("active nodes: \n{}".format("\n".join(active_enodes)))
-
-    for enode in config.enodes:
+    xgen_nodes = await get_xgen_nodes()
+    RedisClient().set("xgen_enodes_mapping", json.dumps(xgen_nodes), 5 * 60)
+    for enode, _ in xgen_nodes.items():
         if not valid_enode(enode):
             continue
 
@@ -68,7 +70,8 @@ async def send_rewards() -> None:
 async def create_airdrop() -> Airdrop:
     airdrop = await Airdrop.create()
     reward_count = 0
-    for enode in config.enodes:
+    xgen_nodes = await get_redis_xgen_nodes()
+    for enode, wallet in xgen_nodes.items():
         if not valid_enode(enode):
             continue
 
@@ -90,7 +93,7 @@ async def create_airdrop() -> Airdrop:
         logger.info(f"{peer.enode} online percent is {online_percent}%")
 
         if online_percent >= config.reward_min_percent:
-            address_checksum = pubkey_to_address(enode)
+            address_checksum = Web3.toChecksumAddress(wallet)
             amount = await Rate.count_reward_amount(
                 float(peer.reward_interest), online_percent
             )

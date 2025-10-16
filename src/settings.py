@@ -60,6 +60,7 @@ class Config:
     rates_url: str
     default_usd_reward_amount: float
     api: RatesAPI = field(init=False)
+    xgen_devices_api: str
 
     def __post_init__(self) -> None:
         enodes_tmp = []

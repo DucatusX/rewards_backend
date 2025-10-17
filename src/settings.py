@@ -10,7 +10,7 @@ from eth_account import Account
 from marshmallow_dataclass import class_schema
 from web3 import HTTPProvider, Web3, contract
 
-from contracts import MULTISENDER_ABI
+from contracts import MULTISENDER_ABI, ERC20_ABI
 from src.core.rates_api import RatesAPI
 from src.logging_conf.config import logger_config
 
@@ -57,6 +57,7 @@ class Config:
     enodes: Set[str] = field(init=False)
     w3: Web3 = field(init=False)
     multisender_contract: contract = field(init=False)
+    token_contract: contract = field(init=False)
     address: str = field(init=False)
     rates_url: str
     default_usd_reward_amount: float
@@ -78,6 +79,12 @@ class Config:
         )
         self.multisender_contract = self.w3.eth.contract(
             address=multisender_contract_address_checksum, abi=MULTISENDER_ABI
+        )
+        token_contract_address_checksum = Web3.toChecksumAddress(
+            self.erc_20_contract_address
+        )
+        self.token_contract = self.w3.eth.contract(
+            address=token_contract_address_checksum, abi=ERC20_ABI
         )
         self.address = Account.from_key(self.private_key).address
         self.api = RatesAPI(self.rates_url)

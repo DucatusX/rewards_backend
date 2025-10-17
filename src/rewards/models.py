@@ -84,6 +84,15 @@ class Airdrop(Model):
         amounts = [int(reward.amount) for reward in rewards]
 
         total_amount = sum(amounts)
+        token_balance = config.token_contract.functions.balanceOf(config.address).call()
+        if token_balance < total_amount:
+            self.status = AirdropStatus.INSUFFICIENT_BALANCE
+            await self.save()
+            logging.info(f"token balance {token_balance}")
+            logging.info(f"need to send {total_amount}")
+            logging.info("relay insuff balance")
+            return
+
         gas_limit = (
             MULTISENDER_INITIAL_GAS
             + MULTISENDER_GAS_ADDITION_PER_ADDRESS * len(amounts)
@@ -91,13 +100,12 @@ class Airdrop(Model):
 
         gas_price = config.gas_price_wei
 
-        if config.w3.eth.get_balance(config.address) < total_amount + (
-            gas_limit * gas_price
-        ):
+        native_balance = config.w3.eth.get_balance(config.address)
+        if native_balance < gas_limit * gas_price:
             self.status = AirdropStatus.INSUFFICIENT_BALANCE
             await self.save()
-            logging.info(f"balance {config.w3.eth.get_balance(config.address)}")
-            logging.info(f"need to send {total_amount + (gas_limit * gas_price)}")
+            logging.info(f"balance {native_balance}")
+            logging.info(f"need for gas {gas_limit * gas_price}")
             logging.info("relay insuff balance")
             return
 
@@ -106,12 +114,15 @@ class Airdrop(Model):
             "nonce": nonce,
             "gasPrice": gas_price,
             "gas": gas_limit,
-            "value": total_amount,
         }
         logging.info(
             f"ready to send rewards addresses={addresses} amounts={amounts} with tx params {tx_params}"
         )
-        func = config.multisender_contract.functions.multisendETH(addresses, amounts)
+        func = config.multisender_contract.functions.multisendToken(
+            config.erc_20_contract_address,
+            addresses,
+            amounts
+        )
         initial_tx = func.buildTransaction(tx_params)
         signed_tx = config.w3.eth.account.sign_transaction(
             initial_tx, config.private_key

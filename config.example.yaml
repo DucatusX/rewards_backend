@@ -1,5 +1,6 @@
 json_rpc:
 multisender_contract_address: '0xB841F784aF27637aD32a68fC78B58D0407747b2b'
+erc_20_contract_address: '0x89db0C0B7A5099CD784FE6d48499EFed70a66fF7'
 gas_price_wei: 47619047619048
 private_key: 
 reward_per_percent: 0.00000000001

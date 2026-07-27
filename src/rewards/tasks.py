@@ -81,12 +81,15 @@ async def create_airdrop() -> Airdrop:
                 "reward_interest": round(config.default_usd_reward_amount / 100, 18)
             },
         )
-
+        if not peer:
+            continue
         healthcheck = (
             await peer.healthchecks.filter(total_counter__gte=10)
             .order_by("-timestamp")
             .first()
         )
+        if not healthcheck:
+            continue
         online_percent = int(
             healthcheck.online_counter * 100 / healthcheck.total_counter
         )
